@@ -1,4 +1,4 @@
-from json import load, loads
+from json import load
 from requests import get
 from gspread import authorize
 from datetime import datetime
@@ -48,6 +48,6 @@ class Raiz:
     def buscar_dados(self, modulo, pagina, opcional=''):
         headers = { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36' }
 
-        apiResponse = get(f'https://bling.com.br/Api/v2/{modulo}/page={pagina}/json/&apikey={self.chaveApi}{opcional}', headers=headers)
+        apiResponse = get(f'https://bling.com.br/Api/v2/{modulo}/page={pagina}/json/&apikey={self.chaveApi}{opcional}', headers=headers).json()
         
-        return loads(apiResponse.text)
+        return apiResponse

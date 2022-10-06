@@ -1,8 +1,10 @@
 from requests import get
-from json import loads
 from xmltodict import parse
 from time import sleep
 from .Raiz import Raiz
+import logging
+
+logging.basicConfig(level=logging.DEBUG, filename="logger.log", format="%(asctime)s - %(levelname)s - %(message)s")
 
 class AnalisePlataformas(Raiz):
 
@@ -32,7 +34,23 @@ class AnalisePlataformas(Raiz):
         print("Preenchendo Aba Analise Plataformas")
         self.preeencherPlanilha()
         
-        return self.objetosFaturamento
+    
+    def apurarLucro(self):
+
+        print('Rodando analise de plataformas')
+        self.criarDadosPlataformas()
+        print('Buscando Produtos')
+        self.buscarProdutos()
+        print('Buscando pedidos')
+        self.calcularFaturamento()
+        
+        for codigo, dadosPlataforma in self.objetosFaturamento.items():
+            print(f'------------------------------')
+            print(f'LOJA: {dadosPlataforma["loja"]}')
+            print(f'FATURAMENTO: {dadosPlataforma["faturamento"]}')
+            print(f'CUSTO PRODUTOS: {dadosPlataforma["custoProdutos"]}')
+            print(f'QUANTIDADE VENDIDA: {dadosPlataforma["quantidadeVendida"]}')
+        
 
     def buscarProdutos(self):
 
@@ -127,16 +145,21 @@ class AnalisePlataformas(Raiz):
                 
                 if loja != None:
                     for item in pedido["pedido"]["itens"]:
-                        if item["item"]["codigo"] != None:
+                        if item["item"]["codigo"] != None:                            
+                            
                             quantidadeVendida = float(item["item"]["quantidade"])
-                            loja["faturamento"] += (float(item["item"]["valorunidade"]) * quantidadeVendida) - float(item["item"]["descontoItem"])
+                            
+                            fator = (float(pedido["pedido"]["totalprodutos"]) - float(pedido["pedido"]["desconto"].replace(',', '.'))) / float(pedido["pedido"]["totalprodutos"])
+                            loja["faturamento"] += (float(item["item"]["valorunidade"]) * quantidadeVendida * fator)
                             loja["quantidadeVendida"] += float(item["item"]["quantidade"])
                             loja["custoProdutos"] += quantidadeVendida * float(item["item"]["precocusto"])
+                            
                 else:
-                    print(f'Loja não encontrada nos pedidos {lojaPedido}')
+                    logging.warning(f'Loja não encontrada{lojaPedido}')
 
             except Exception as e:
-                print(f'Error: {e} - Pedido: {pedido["pedido"]["numero"]}')
+                logging.warning(f'{e} - Pedido: {pedido["pedido"]["numero"]}')
+                
 
     def lerNotasFiscais(self):
 
@@ -196,10 +219,11 @@ class AnalisePlataformas(Raiz):
                     loja["faturamentoFull"] += float(nota["notafiscal"]["valorNota"])
 
                 except Exception as e:
-                    print(f'Ocorreu o erro: {e} na nota {nota["notafiscal"]["numero"]}')
+                    logging.warning(f'erro: {e} - nota {nota["notafiscal"]["numero"]}')                   
 
             else:
-                print(f'Loja não encontrada: {lojaNota}')
+                logging.info(f'Loja não encontrada: {lojaNota}')
+                
                 
     def preeencherPlanilha(self):
 

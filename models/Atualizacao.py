@@ -6,6 +6,9 @@ from requests import get, put
 from pandas import DataFrame
 from xmltodict import parse
 from time import sleep
+import logging
+
+logging.basicConfig(level=logging.DEBUG, filename="logger.log", format="%(asctime)s - %(levelname)s - %(message)s")
 
 class Atualizacao(Raiz):
 
@@ -107,14 +110,14 @@ class Atualizacao(Raiz):
                                     
                                     #Caso não for achado em nenhum dos 2
                                     if produto == None and traducaoSku == None:
-                                        print(f'O seguinte sku deu erro: {skuNota}')
+                                        logging.warning(f'O seguinte sku deu erro: {skuNota}')
                                     
                                     elif traducaoSku == None:
                                         #caso o sku não esteja dentro dos dados errados
                                         produto = self.todosProdutos.get(skuNota)
                                         
                                         if produto == None:
-                                            print(skuNota + "Erro sku DENTRO")
+                                            logging.warning(f'SKU não encontrado: {skuNota}')
                                         
                                         dataExiste = False                                    
                                         produto.vendasFull += float(quantidadeComprada)
@@ -128,7 +131,7 @@ class Atualizacao(Raiz):
                                                 produtoComposto = self.todosProdutos.get(componente["codigo"].upper().strip())
                                                 
                                                 if produtoComposto == None:
-                                                    print(componente["codigo"].upper() + "Erro ao achar")                                  
+                                                    logging.warning(f'SKU não encontrado: {componente["codigo"]}')                      
 
                                                 # Adciona vendas do produto composto a variavel
                                                 produtoComposto.vendasFull += float(quantidadeComprada) * float(componente["quantidade"])
@@ -167,7 +170,7 @@ class Atualizacao(Raiz):
                                         produto = self.todosProdutos.get(traducaoSku.upper().strip())
                                         
                                         if produto == None:
-                                            print(f'SKU não encontrado: {traducaoSku}')
+                                            logging.warning(f'SKU não encontrado: {traducaoSku}')                                            
                                         
                                         produto.vendasFull += float(quantidadeComprada)
                                         produto.faturado += float(valorVenda) * float(quantidadeComprada)
@@ -195,7 +198,7 @@ class Atualizacao(Raiz):
                                 produto = self.todosProdutos.get(skuNota)                                
                                 
                                 if produto == None and traducaoSku == None:
-                                    print(f'ListaItens: {skuNota}')
+                                    logging.warning(f'SKU não encontrado: {skuNota}')                                    
                                 
                                 elif traducaoSku == None:
                                     
@@ -209,7 +212,7 @@ class Atualizacao(Raiz):
                                             produtoComposto = self.todosProdutos.get(componente["codigo"].upper().strip())
                                             
                                             if produtoComposto == None:
-                                                print(f'Aqui {componente["codigo"].upper().strip()}')
+                                                logging.warning(f'SKU não encontrado: {componente["codigo"]}')
                                             
                                             # adciona vendas Full a variavel
                                             produtoComposto.vendasFull += float(quantidadeComprada) * float(componente["quantidade"])
@@ -247,7 +250,7 @@ class Atualizacao(Raiz):
                                     produto = self.todosProdutos.get(traducaoSku.upper().strip())
                                     
                                     if produto == None:
-                                        print(traducaoSku.upper().strip() + "Correção código errado")
+                                        logging.warning(f'SKU não encontrado: {traducaoSku}')                                  
 
                                     dataExiste = False                            
                                     produto.vendasFull += float(quantidadeComprada)
@@ -267,7 +270,7 @@ class Atualizacao(Raiz):
                                         produto.vendasPorDia.append(objetoData)
 
                         except Exception as e:
-                            print(f'Error: {e} - nota: {nota["notafiscal"]["numero"]}')
+                            logging.critical(f'{e} nota: {nota["notafiscal"]["numero"]}')
 
             pagina += 1
 
@@ -336,7 +339,7 @@ class Atualizacao(Raiz):
                                     produto.faturado += (float(item["item"]["valorunidade"]) * fator * float(item["item"]["quantidade"]))
 
                                 except Exception as e:
-                                    print(f'SKU not found: {item["item"]["codigo"].upper()} - Error: {e}')
+                                    logging.critical(f'SKU not found: {item["item"]["codigo"]} - Error: {e}')
 
             page += 1
 
@@ -387,7 +390,7 @@ class Atualizacao(Raiz):
                     linhasDeletadas += 1
                     
                 self.atenderPedidoCompra(ped.numSistema)
-                print(f'Pedido atendido: {ped.numSistema}')              
+                logging.info(f'Pedido atendido: {ped.numeroPedido}')
 
     # EXCEL FUNCTIONS
 
@@ -396,11 +399,10 @@ class Atualizacao(Raiz):
         self.abaEstoque = self.planilhaCompras.worksheet("estoque")
         self.abaVendas = self.planilhaCompras.worksheet('vendas')
         self.abaRelatorio = self.planilhaCompras.worksheet('relatorio')
+        self.abaRelatorioAux = self.planilhaCompras.worksheet('relatorioaux')
         self.abaPedidosChegar = self.conectarPlanilha('HAKON PARTS').worksheet('Pedidos')
 
     def preencherPlanihaDados(self):
-
-        
             
         print('Preenchendo Aba Dados')
         linha = 2
@@ -499,6 +501,7 @@ class Atualizacao(Raiz):
                     pedidoNaPlanilha = True
 
             if pedidoNaPlanilha == False:
+                logging.info(f'Pedido escrito: {pedComp.numeroPedido}')
                 self.abaPedidosChegar.format(f'{linha}:{linha}', formatoPintar)
 
                 self.abaPedidosChegar.update_cell(linha, 7, pedComp.dataCompra)
@@ -558,7 +561,7 @@ class Atualizacao(Raiz):
             coluna += 1
 
     def preencherAbaRelatorio(self):
-        linha = 2
+        linha = 3
         print("Preenchendo Aba Relatorio")        
         
         self.abaRelatorio.update_cell(1, 1, "ESCREVENDO AQUI")
@@ -585,19 +588,19 @@ class Atualizacao(Raiz):
             linha += 1
         
         #Preenchendo headers
-        self.abaRelatorio.update_cell(1, 1, "SKU")
+        self.abaRelatorio.update_cell(2, 1, "SKU")
         sleep(1)
-        self.abaRelatorio.update_cell(1, 2, "ESTOQUE")
+        self.abaRelatorio.update_cell(2, 2, "ESTOQUE")
         sleep(1)
-        self.abaRelatorio.update_cell(1, 3, "VENDAS FORA FULL 30D")
+        self.abaRelatorio.update_cell(2, 3, "VENDAS FORA FULL 30D")
         sleep(1)
-        self.abaRelatorio.update_cell(1, 4, "VENDAS FULL 30D")
+        self.abaRelatorio.update_cell(2, 4, "VENDAS FULL 30D")
         sleep(1)
-        self.abaRelatorio.update_cell(1, 5, "TOTAL 30D")
+        self.abaRelatorio.update_cell(2, 5, "TOTAL 30D")
         sleep(1)
-        self.abaRelatorio.update_cell(1, 6, "TOTAL FATURADO 30D")
+        self.abaRelatorio.update_cell(2, 6, "TOTAL FATURADO 30D")
         sleep(1)
-        self.abaRelatorio.update_cell(1, 7, "TICKET MÉDIO")
+        self.abaRelatorio.update_cell(2, 7, "TICKET MÉDIO")
 
         self.abaRelatorio.update_cell(2, 20, self.mesAtual)
         linha = 2
@@ -605,20 +608,19 @@ class Atualizacao(Raiz):
     def preenchendoOutroMes(self, colunaComecar):
         
         linha = 2
-        print("Preenchendo Aba Relatorio")        
-
+        print("Preenchendo Aba Relatorio")
 
         for sku, produto in self.todosProdutos.items():
 
             coluna = colunaComecar
             
-            self.abaRelatorio.update_cell(linha, coluna, produto.sku)
+            self.abaRelatorioAux.update_cell(linha, coluna, produto.sku)
             sleep(2)
             coluna += 1
-            self.abaRelatorio.update_cell(linha, coluna, float(produto.quantidadeVendida) + float(produto.vendasFull))
+            self.abaRelatorioAux.update_cell(linha, coluna, float(produto.quantidadeVendida) + float(produto.vendasFull))
             sleep(2)
             coluna += 1
-            self.abaRelatorio.update_cell(linha, coluna, produto.faturado)
+            self.abaRelatorioAux.update_cell(linha, coluna, produto.faturado)
             sleep(1)
 
             linha += 1
